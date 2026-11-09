@@ -123,7 +123,25 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         body: JSON.stringify(payload)
       });
 
-      const data = await response.json();
+      const responseText = await response.text();
+      let data: { error?: string; user?: User };
+      try {
+        data = JSON.parse(responseText) as { error?: string; user?: User };
+      } catch {
+        const contentType = response.headers.get('content-type') || '';
+        if (!contentType.includes('application/json')) {
+          throw new Error(
+            isBn
+              ? 'লগইন সার্ভার থেকে JSON উত্তর পাওয়া যায়নি। API সার্ভার চালু আছে কি না যাচাই করে আবার চেষ্টা করুন।'
+              : 'The login server returned a webpage instead of a JSON response. Check that the API server is running and try again.'
+          );
+        }
+        throw new Error(
+          isBn
+            ? 'লগইন সার্ভারের উত্তরটি পড়া যায়নি। কিছুক্ষণ পর আবার চেষ্টা করুন।'
+            : 'The login server returned an unreadable response. Please try again shortly.'
+        );
+      }
 
       if (!response.ok) {
         throw new Error(data.error || (isBn ? 'অথেনটিকেশন ব্যর্থ হয়েছে।' : 'Authentication failed.'));
@@ -133,8 +151,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         onLoginSuccess(data.user);
         onClose();
       }
-    } catch (err: any) {
-      setErrorMessage(err.message || (isBn ? 'সংযোগ সমস্যা হয়েছে।' : 'Network connection error.'));
+    } catch (err: unknown) {
+      setErrorMessage(
+        err instanceof Error
+          ? err.message
+          : (isBn ? 'সংযোগ সমস্যা হয়েছে।' : 'Network connection error.')
+      );
     } finally {
       setLoading(false);
     }

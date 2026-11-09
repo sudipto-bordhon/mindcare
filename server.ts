@@ -1196,6 +1196,10 @@ Write a thoughtful reflection based only on this journal entry.`;
   }
 });
 
+app.use('/api', (req, res) => {
+  res.status(404).json({ error: `API endpoint not found: ${req.method} ${req.path}` });
+});
+
 // Mount Vite or static server
 async function startServer() {
   if (process.env.NODE_ENV === 'production') {
