@@ -1,0 +1,6 @@
+{
+  "name": "MindCare - AI-Powered Mental Wellness & Self-Care Platform",
+  "description": "Evidence-informed mental wellness platform with bilingual mood tracking, clinical-grade non-diagnostic screenings (PHQ-9, GAD-7), AI wellness assistant, guided self-care exercises, and privacy-first journaling.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
