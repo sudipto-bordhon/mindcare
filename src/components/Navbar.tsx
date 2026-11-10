@@ -18,7 +18,6 @@ import {
   BarChart2, 
   Settings as SettingsIcon,
   Flame,
-  Lock,
   ChevronDown
 } from 'lucide-react';
 import { User, Language, Theme } from '../types';
@@ -57,17 +56,17 @@ export const Navbar: React.FC<NavbarProps> = ({
   const isBn = language === 'bn';
 
   const navItems = [
-    { id: 'home', label: t.nav.home, isPublic: true },
-    { id: 'dashboard', label: t.nav.dashboard, requireAuth: true },
-    { id: 'assessment', label: t.nav.assessment, requireAuth: true },
-    { id: 'screenings', label: t.nav.screenings, requireAuth: true },
-    { id: 'ai-assistant', label: t.nav.aiAssistant, requireAuth: true },
-    { id: 'stress-analysis', label: t.nav.stressAnalysis, requireAuth: true },
-    { id: 'journal', label: t.nav.journal, requireAuth: true },
-    { id: 'activities', label: t.nav.activities, requireAuth: true },
-    { id: 'education', label: t.nav.education, requireAuth: true },
-    { id: 'reports', label: t.nav.reports, requireAuth: true },
-    { id: 'professionals', label: t.nav.professionals, isPublic: true },
+    { id: 'home', label: t.nav.home },
+    { id: 'dashboard', label: t.nav.dashboard },
+    { id: 'assessment', label: t.nav.assessment },
+    { id: 'screenings', label: t.nav.screenings },
+    { id: 'ai-assistant', label: t.nav.aiAssistant },
+    { id: 'stress-analysis', label: t.nav.stressAnalysis },
+    { id: 'journal', label: t.nav.journal },
+    { id: 'activities', label: t.nav.activities },
+    { id: 'education', label: t.nav.education },
+    { id: 'reports', label: t.nav.reports },
+    { id: 'professionals', label: t.nav.professionals },
   ];
   const primaryNavItems = navItems.filter(item =>
     ['home', 'dashboard', 'assessment', 'screenings', 'ai-assistant', 'journal'].includes(item.id)
@@ -76,10 +75,8 @@ export const Navbar: React.FC<NavbarProps> = ({
     ['stress-analysis', 'activities', 'education', 'reports', 'professionals'].includes(item.id)
   );
   const selectNavItem = (item: typeof navItems[number]) => {
-    const isLocked = item.requireAuth && !currentUser;
     onSelectTab(item.id);
     setMoreMenuOpen(false);
-    if (isLocked) onOpenAuth();
   };
 
   return (
@@ -133,7 +130,6 @@ export const Navbar: React.FC<NavbarProps> = ({
           <nav className="hidden xl:flex flex-1 items-center justify-center gap-0.5">
             {primaryNavItems.map((item) => {
               const isActive = currentTab === item.id;
-              const isLocked = item.requireAuth && !currentUser;
               return (
                 <button
                   key={item.id}
@@ -145,7 +141,6 @@ export const Navbar: React.FC<NavbarProps> = ({
                   }`}
                 >
                   <span>{item.label}</span>
-                  {isLocked && <Lock className="w-3 h-3 text-slate-400" />}
                 </button>
               );
             })}
@@ -165,7 +160,6 @@ export const Navbar: React.FC<NavbarProps> = ({
               {moreMenuOpen && (
                 <div className="absolute right-0 top-full mt-2 w-52 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-1.5 shadow-xl z-50">
                   {moreNavItems.map(item => {
-                    const isLocked = item.requireAuth && !currentUser;
                     return (
                       <button
                         key={item.id}
@@ -177,7 +171,6 @@ export const Navbar: React.FC<NavbarProps> = ({
                         }`}
                       >
                         <span>{item.label}</span>
-                        {isLocked && <Lock className="w-3 h-3 text-slate-400" />}
                       </button>
                     );
                   })}
@@ -342,16 +335,12 @@ export const Navbar: React.FC<NavbarProps> = ({
       >
           {navItems.map((item) => {
             const isActive = currentTab === item.id;
-            const isLocked = item.requireAuth && !currentUser;
             return (
               <button
                 key={item.id}
                 onClick={() => {
                   onSelectTab(item.id);
                   setMobileMenuOpen(false);
-                  if (isLocked) {
-                    onOpenAuth();
-                  }
                 }}
                 className={`w-full text-left px-3 py-2 rounded-lg text-sm font-semibold flex items-center justify-between ${
                   isActive
@@ -360,7 +349,6 @@ export const Navbar: React.FC<NavbarProps> = ({
                 }`}
               >
                 <span>{item.label}</span>
-                {isLocked && <Lock className="w-3.5 h-3.5 text-slate-400" />}
               </button>
             );
           })}

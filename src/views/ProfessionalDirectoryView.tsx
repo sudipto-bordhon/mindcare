@@ -8,7 +8,6 @@ import {
   ExternalLink, 
   AlertTriangle,
   Building,
-  HeartHandshake,
   Stethoscope,
   Building2,
   Sparkles,
@@ -42,10 +41,6 @@ export const ProfessionalDirectoryView: React.FC<ProfessionalDirectoryViewProps>
     <div className="max-w-4xl mx-auto space-y-8 pb-16">
       {/* Title */}
       <div className="text-center max-w-xl mx-auto space-y-2">
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 text-xs font-bold">
-          <HeartHandshake className="w-3.5 h-3.5" />
-          <span>{isBn ? 'পেশাদার স্বাস্থ্যসেবা নেটওয়ার্ক' : 'Verified Clinical Directory'}</span>
-        </div>
         <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white">
           {t.professionals.title}
         </h1>

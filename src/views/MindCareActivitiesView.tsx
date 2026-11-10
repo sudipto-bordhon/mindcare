@@ -20,10 +20,10 @@ import {
   Ear,
   Smile
 } from 'lucide-react';
-import { WellnessActivity, Language } from '../types';
-import { WELLNESS_ACTIVITIES } from '../data/initialData';
+import { AmbientSoundscape, WellnessActivity, Language } from '../types';
+import { INITIAL_AMBIENT_SOUNDSCAPES, WELLNESS_ACTIVITIES } from '../data/initialData';
 import { translations } from '../data/translations';
-import { playBreathChime, startAmbientSound, stopAmbientSound } from '../utils/audioSynthesizer';
+import { playBreathChime, startAmbientAudio, startAmbientSound, stopAmbientSound } from '../utils/audioSynthesizer';
 
 interface MindCareActivitiesViewProps {
   language: Language;
@@ -35,6 +35,7 @@ export const MindCareActivitiesView: React.FC<MindCareActivitiesViewProps> = ({
   const t = translations[language];
   const isBn = language === 'bn';
   const [customActivities, setCustomActivities] = useState<WellnessActivity[]>([]);
+  const [soundscapes, setSoundscapes] = useState<AmbientSoundscape[]>(INITIAL_AMBIENT_SOUNDSCAPES);
 
   useEffect(() => {
     const loadLibraryContent = () => {
@@ -44,6 +45,14 @@ export const MindCareActivitiesView: React.FC<MindCareActivitiesViewProps> = ({
         setCustomActivities(Array.isArray(parsed) ? parsed : []);
       } catch {
         setCustomActivities([]);
+      }
+
+      try {
+        const saved = localStorage.getItem('mindcare_ambient_soundscapes');
+        const parsed = saved ? JSON.parse(saved) : null;
+        setSoundscapes(Array.isArray(parsed) ? parsed : INITIAL_AMBIENT_SOUNDSCAPES);
+      } catch {
+        setSoundscapes(INITIAL_AMBIENT_SOUNDSCAPES);
       }
     };
 
@@ -67,7 +76,15 @@ export const MindCareActivitiesView: React.FC<MindCareActivitiesViewProps> = ({
   const [groundingStep, setGroundingStep] = useState<number>(0);
 
   // Ambient sound synthesizer state
-  const [activeSound, setActiveSound] = useState<'rain' | 'ocean' | 'forest' | 'birds' | 'whitenoise' | null>(null);
+  const [activeSound, setActiveSound] = useState<string | null>(null);
+  const [soundError, setSoundError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (activeSound && !soundscapes.some(soundscape => soundscape.id === activeSound)) {
+      stopAmbientSound();
+      setActiveSound(null);
+    }
+  }, [activeSound, soundscapes]);
 
   // Breathing timer loop
   useEffect(() => {
@@ -144,13 +161,29 @@ export const MindCareActivitiesView: React.FC<MindCareActivitiesViewProps> = ({
     setCycleCount(0);
   };
 
-  const handleToggleSound = (type: 'rain' | 'ocean' | 'forest' | 'birds' | 'whitenoise') => {
-    if (activeSound === type) {
+  const handleToggleSound = async (soundscape: AmbientSoundscape) => {
+    if (activeSound === soundscape.id) {
       stopAmbientSound();
       setActiveSound(null);
+      setSoundError(null);
     } else {
-      startAmbientSound(type, 0.2);
-      setActiveSound(type);
+      stopAmbientSound();
+      setActiveSound(null);
+      setSoundError(null);
+      try {
+        if (soundscape.source === 'audio' && soundscape.audioUrl) {
+          await startAmbientAudio(soundscape.audioUrl, 0.2);
+        } else if (soundscape.source === 'synth' && soundscape.soundType) {
+          startAmbientSound(soundscape.soundType, 0.2);
+        } else {
+          throw new Error('The soundscape has no playable audio source.');
+        }
+        setActiveSound(soundscape.id);
+      } catch {
+        setSoundError(isBn
+          ? 'এই অডিওটি চালানো যাচ্ছে না। অডিও লিংকটি পরীক্ষা করুন।'
+          : 'This audio could not be played. Check the audio URL and try again.');
+      }
     }
   };
 
@@ -180,10 +213,6 @@ export const MindCareActivitiesView: React.FC<MindCareActivitiesViewProps> = ({
     <div className="max-w-4xl mx-auto space-y-10 pb-16">
       {/* Title */}
       <div className="text-center max-w-xl mx-auto space-y-2">
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 text-xs font-bold">
-          <Wind className="w-3.5 h-3.5" />
-          <span>{isBn ? 'শ্বাস-প্রশ্বাস ও মননশীল অনুশীলন' : 'MindCare Activities & Relaxation'}</span>
-        </div>
         <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white">
           {t.activities.title}
         </h1>
@@ -417,20 +446,15 @@ export const MindCareActivitiesView: React.FC<MindCareActivitiesViewProps> = ({
           </p>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-          {[
-            { id: 'rain' as const, labelEn: 'Gentle Rain', labelBn: 'বৃষ্টির শব্দ', icon: CloudRain },
-            { id: 'ocean' as const, labelEn: 'Ocean Waves', labelBn: 'সাগরের ঢেউ', icon: Waves },
-            { id: 'forest' as const, labelEn: 'Forest Breeze', labelBn: 'বনের হাওয়া', icon: Trees },
-            { id: 'birds' as const, labelEn: 'Morning Birds', labelBn: 'পাখির ডাক', icon: Smile },
-            { id: 'whitenoise' as const, labelEn: 'White Noise', labelBn: 'হোয়াইট নয়েজ', icon: Radio },
-          ].map((snd) => {
-            const Icon = snd.icon;
-            const isPlaying = activeSound === snd.id;
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+          {soundscapes.map((soundscape) => {
+            const soundIcons = { rain: CloudRain, ocean: Waves, forest: Trees, birds: Smile, whitenoise: Radio };
+            const Icon = soundscape.soundType ? soundIcons[soundscape.soundType] : Volume2;
+            const isPlaying = activeSound === soundscape.id;
             return (
               <button
-                key={snd.id}
-                onClick={() => handleToggleSound(snd.id)}
+                key={soundscape.id}
+                onClick={() => void handleToggleSound(soundscape)}
                 className={`p-4 rounded-2xl border text-center flex flex-col items-center justify-center gap-2 transition ${
                   isPlaying
                     ? 'bg-indigo-600 text-white border-indigo-600 shadow-md scale-105'
@@ -438,7 +462,7 @@ export const MindCareActivitiesView: React.FC<MindCareActivitiesViewProps> = ({
                 }`}
               >
                 <Icon className="w-6 h-6" />
-                <span className="text-xs font-bold">{isBn ? snd.labelBn : snd.labelEn}</span>
+                <span className="text-xs font-bold">{isBn ? soundscape.titleBn : soundscape.titleEn}</span>
                 <span className="text-[10px] font-semibold opacity-80">
                   {isPlaying ? (isBn ? 'বাজছে...' : 'Playing') : (isBn ? 'চালু করুন' : 'Tap to Play')}
                 </span>
@@ -446,6 +470,10 @@ export const MindCareActivitiesView: React.FC<MindCareActivitiesViewProps> = ({
             );
           })}
         </div>
+        {soundscapes.length === 0 && (
+          <p className="text-xs text-slate-500">{isBn ? 'এখন কোনো সাউন্ডস্কেপ প্রকাশিত নেই।' : 'No soundscapes are available right now.'}</p>
+        )}
+        {soundError && <p role="alert" className="text-xs font-semibold text-rose-600">{soundError}</p>}
       </div>
 
       {/* Feature 4: Progressive Muscle Relaxation (PMR) Guide */}

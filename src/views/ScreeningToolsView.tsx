@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { 
-  Activity, 
   ShieldCheck, 
   CheckCircle, 
   AlertTriangle, 
@@ -22,6 +21,7 @@ interface ScreeningToolsViewProps {
   onOpenCrisis: () => void;
   refreshToken: number;
   language: Language;
+  onRequireAuth: () => void;
 }
 
 export const ScreeningToolsView: React.FC<ScreeningToolsViewProps> = ({
@@ -31,6 +31,7 @@ export const ScreeningToolsView: React.FC<ScreeningToolsViewProps> = ({
   onOpenCrisis,
   refreshToken,
   language,
+  onRequireAuth,
 }) => {
   const t = translations[language];
   const isBn = language === 'bn';
@@ -104,6 +105,10 @@ export const ScreeningToolsView: React.FC<ScreeningToolsViewProps> = ({
     }).format(date);
 
   const startInstrument = (inst: ScreeningInstrument) => {
+    if (!currentUser) {
+      onRequireAuth();
+      return;
+    }
     const refreshAvailable = refreshUnlocked && !refreshedInstrumentIds.includes(inst.id);
     if (!refreshAvailable && !isRetakeAvailable(inst.id)) return;
     setSelectedInstrument(inst);
@@ -197,10 +202,6 @@ export const ScreeningToolsView: React.FC<ScreeningToolsViewProps> = ({
     <div className="max-w-4xl mx-auto space-y-8 pb-16">
       {/* Title */}
       <div className="text-center max-w-2xl mx-auto space-y-2">
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 text-xs font-bold">
-          <Activity className="w-3.5 h-3.5" />
-          <span>{t.screenings.nonClinicalBadge}</span>
-        </div>
         <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white">
           {t.screenings.title}
         </h1>

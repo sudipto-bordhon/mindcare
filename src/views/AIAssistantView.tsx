@@ -23,6 +23,7 @@ interface AIAssistantViewProps {
   onUpdateConsent: (updated: Partial<ConsentSettings>) => void;
   language: Language;
   onOpenCrisis: () => void;
+  onRequireAuth: () => void;
 }
 
 interface ChatSession {
@@ -38,6 +39,7 @@ export const AIAssistantView: React.FC<AIAssistantViewProps> = ({
   onUpdateConsent,
   language,
   onOpenCrisis,
+  onRequireAuth,
 }) => {
   const t = translations[language];
   const isBn = language === 'bn';
@@ -166,6 +168,10 @@ export const AIAssistantView: React.FC<AIAssistantViewProps> = ({
   const handleSend = async (textToSend?: string) => {
     const userText = (textToSend || input).trim();
     if (!userText || loading) return;
+    if (!currentUser) {
+      onRequireAuth();
+      return;
+    }
     const chatId = activeChatId || `chat_${Date.now()}`;
     if (!activeChatId) setActiveChatId(chatId);
 
@@ -335,7 +341,7 @@ export const AIAssistantView: React.FC<AIAssistantViewProps> = ({
             </button>
 
             <button
-              onClick={handleClearHistory}
+              onClick={() => currentUser ? handleClearHistory() : onRequireAuth()}
               className="p-2 rounded-xl text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition"
               title="Clear Chat History"
               aria-label="Clear chat history"
@@ -360,7 +366,13 @@ export const AIAssistantView: React.FC<AIAssistantViewProps> = ({
               <input
                 type="checkbox"
                 checked={consent.aiMemoryConsent}
-                onChange={(e) => onUpdateConsent({ aiMemoryConsent: e.target.checked })}
+                onChange={(e) => {
+                  if (!currentUser) {
+                    onRequireAuth();
+                    return;
+                  }
+                  onUpdateConsent({ aiMemoryConsent: e.target.checked });
+                }}
                 className="w-4 h-4 accent-emerald-600 rounded cursor-pointer"
               />
             </div>

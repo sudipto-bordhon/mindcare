@@ -30,6 +30,7 @@ interface JournalViewProps {
   onDeleteEntry: (id: string) => void;
   onUpdateEntry: (entry: JournalEntry) => void;
   language: Language;
+  onRequireAuth: () => void;
 }
 
 export const JournalView: React.FC<JournalViewProps> = ({
@@ -40,6 +41,7 @@ export const JournalView: React.FC<JournalViewProps> = ({
   onDeleteEntry,
   onUpdateEntry,
   language,
+  onRequireAuth,
 }) => {
   const t = translations[language];
   const isBn = language === 'bn';
@@ -57,6 +59,7 @@ export const JournalView: React.FC<JournalViewProps> = ({
   const [consentWarning, setConsentWarning] = useState<string | null>(null);
   const [entryToDelete, setEntryToDelete] = useState<string | null>(null);
   const [editingEntry, setEditingEntry] = useState<JournalEntry | null>(null);
+  const [expandedRevisions, setExpandedRevisions] = useState<Record<string, boolean>>({});
   const [newMoodName, setNewMoodName] = useState('');
   const defaultMoodOptions = ['Calm', 'Grateful', 'Anxious', 'Hopeful', 'Exhausted', 'Joyful'];
   const [moodOptions, setMoodOptions] = useState<string[]>(() => {
@@ -74,6 +77,17 @@ export const JournalView: React.FC<JournalViewProps> = ({
   const atEntryLimit = entries.length >= maxEntries;
   const countWords = (value: string) => value.trim() ? value.trim().split(/\s+/).length : 0;
   const currentWordCount = countWords(newContent);
+  const hasEditChanges = !!editingEntry && (
+    editingEntry.title !== newTitle.trim()
+    || editingEntry.content !== newContent.trim()
+    || editingEntry.moodTag !== newMoodTag
+    || editingEntry.category !== newCategory
+  );
+  const savedRevisionWords = (editingEntry?.revisions || [])
+    .reduce((total, revision) => total + countWords(revision.content || ''), 0);
+  const totalEntryWordCount = savedRevisionWords
+    + currentWordCount
+    + (hasEditChanges && editingEntry ? countWords(editingEntry.content) : 0);
 
   useEffect(() => {
     if (currentUser?.id) {
@@ -83,6 +97,10 @@ export const JournalView: React.FC<JournalViewProps> = ({
 
   const addMood = (event: React.FormEvent) => {
     event.preventDefault();
+    if (!currentUser) {
+      onRequireAuth();
+      return;
+    }
     const mood = newMoodName.trim();
     if (!mood || moodOptions.some(item => item.toLowerCase() === mood.toLowerCase())) return;
     setMoodOptions(previous => [...previous, mood]);
@@ -90,6 +108,10 @@ export const JournalView: React.FC<JournalViewProps> = ({
   };
 
   const moveMood = (index: number, direction: -1 | 1) => {
+    if (!currentUser) {
+      onRequireAuth();
+      return;
+    }
     const targetIndex = index + direction;
     if (targetIndex < 0 || targetIndex >= moodOptions.length) return;
     setMoodOptions(previous => {
@@ -100,6 +122,10 @@ export const JournalView: React.FC<JournalViewProps> = ({
   };
 
   const deleteMood = (mood: string) => {
+    if (!currentUser) {
+      onRequireAuth();
+      return;
+    }
     if (moodOptions.length <= 1) return;
     setMoodOptions(previous => previous.filter(item => item !== mood));
     if (selectedMoodFilter === mood) setSelectedMoodFilter('All');
@@ -118,7 +144,11 @@ export const JournalView: React.FC<JournalViewProps> = ({
 
   const handleCreateEntry = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newTitle.trim() || !newContent.trim() || currentWordCount > maxWords) return;
+    if (!currentUser) {
+      onRequireAuth();
+      return;
+    }
+    if (!newTitle.trim() || !newContent.trim() || totalEntryWordCount > maxWords) return;
 
     if (editingEntry) {
       const updatedEntry: JournalEntry = {
@@ -128,6 +158,20 @@ export const JournalView: React.FC<JournalViewProps> = ({
         moodTag: newMoodTag,
         category: newCategory,
         updatedAt: new Date().toISOString(),
+        revisions: hasEditChanges
+          ? [
+              ...(editingEntry.revisions || []),
+              {
+                title: editingEntry.title,
+                content: editingEntry.content,
+                date: editingEntry.date,
+                moodTag: editingEntry.moodTag,
+                category: editingEntry.category,
+                aiReflection: editingEntry.aiReflection,
+                savedAt: new Date().toISOString(),
+              },
+            ]
+          : editingEntry.revisions,
         aiReflection: undefined,
       };
       onUpdateEntry(updatedEntry);
@@ -152,6 +196,10 @@ export const JournalView: React.FC<JournalViewProps> = ({
   };
 
   const openEditEntry = (entry: JournalEntry) => {
+    if (!currentUser) {
+      onRequireAuth();
+      return;
+    }
     setEditingEntry(entry);
     setNewTitle(entry.title);
     setNewContent(entry.content);
@@ -161,6 +209,10 @@ export const JournalView: React.FC<JournalViewProps> = ({
   };
 
   const handleRequestAIReflection = async (entry: JournalEntry) => {
+    if (!currentUser) {
+      onRequireAuth();
+      return;
+    }
     if (!consent.journalAnalysisConsent) {
       setConsentWarning(
         isBn
@@ -313,6 +365,10 @@ export const JournalView: React.FC<JournalViewProps> = ({
 
           <button
             onClick={() => {
+              if (!currentUser) {
+                onRequireAuth();
+                return;
+              }
               setEditingEntry(null);
               setNewTitle('');
               setNewContent('');
@@ -458,13 +514,28 @@ export const JournalView: React.FC<JournalViewProps> = ({
               className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 p-6 shadow-xs space-y-4 hover:border-emerald-300 transition"
             >
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-700 pb-3">
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <h3 className="font-bold text-base text-slate-900 dark:text-white">
                     {entry.title}
                   </h3>
                   <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-teal-100 dark:bg-teal-950 text-teal-800 dark:text-teal-300">
                     {entry.moodTag}
                   </span>
+                  {!!entry.revisions?.length && (
+                    <button
+                      type="button"
+                      onClick={() => setExpandedRevisions(previous => ({
+                        ...previous,
+                        [entry.id]: !previous[entry.id],
+                      }))}
+                      className="rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-[10px] font-bold text-blue-700 transition hover:bg-blue-100 dark:border-blue-900 dark:bg-blue-950/50 dark:text-blue-300 dark:hover:bg-blue-950"
+                      aria-expanded={!!expandedRevisions[entry.id]}
+                    >
+                      {isBn
+                        ? `সম্পাদিত · পুরোনো লেখা (${entry.revisions.length})`
+                        : `Edited · View old version (${entry.revisions.length})`}
+                    </button>
+                  )}
                 </div>
 
                 <div className="flex items-center gap-3 text-xs text-slate-400">
@@ -518,6 +589,38 @@ export const JournalView: React.FC<JournalViewProps> = ({
                 {entry.content}
               </p>
 
+              {!!entry.revisions?.length && expandedRevisions[entry.id] && (
+                <section className="space-y-3 rounded-2xl border border-blue-200 bg-blue-50/60 p-4 dark:border-blue-900/70 dark:bg-blue-950/20">
+                  <h4 className="text-xs font-bold text-blue-900 dark:text-blue-200">
+                    {isBn ? 'আগের জার্নাল সংস্করণ' : 'Previous journal versions'}
+                  </h4>
+                  {[...entry.revisions].reverse().map((revision, index) => (
+                    <article
+                      key={`${entry.id}-revision-${index}`}
+                      className="space-y-2 rounded-xl border border-blue-100 bg-white p-3 dark:border-blue-900/60 dark:bg-slate-900/70"
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <h5 className="text-sm font-bold text-slate-800 dark:text-slate-200">{revision.title}</h5>
+                        <span className="text-[10px] text-slate-500">
+                          {isBn ? 'সম্পাদনার আগে' : 'Before edit'} · {new Date(revision.savedAt).toLocaleString(isBn ? 'bn-BD' : 'en-US')}
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap gap-2 text-[10px]">
+                        <span className="rounded-full bg-teal-100 px-2 py-0.5 font-semibold text-teal-800 dark:bg-teal-950 dark:text-teal-300">
+                          {revision.moodTag}
+                        </span>
+                        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                          {revision.category}
+                        </span>
+                      </div>
+                      <p className="whitespace-pre-wrap text-xs leading-relaxed text-slate-700 dark:text-slate-300">
+                        {revision.content}
+                      </p>
+                    </article>
+                  ))}
+                </section>
+              )}
+
               {/* Chatbot reflection section */}
               {entry.aiReflection ? (
                 <div className="p-4 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/60 text-xs space-y-1 animate-fade-in">
@@ -533,7 +636,7 @@ export const JournalView: React.FC<JournalViewProps> = ({
                 <div className="flex items-center justify-between pt-2">
                   <span className="text-[11px] text-slate-400 italic">
                     {consent.journalAnalysisConsent
-                      ? (isBn ? 'ঐচ্ছিক রিফ্লেকশন পেতে পারেন' : 'Chatbot reflection ready on demand')
+                      ? (isBn ? 'এআই রিফ্লেকশন প্রস্তুত' : 'AI reflection ready on demand')
                       : (isBn ? 'গোপনীয়তার সুরক্ষায় এআই ডায়েরি বিশ্লেষণ স্থগিত' : 'AI Journal analysis paused by privacy preference')}
                   </span>
                   <button
@@ -620,8 +723,11 @@ export const JournalView: React.FC<JournalViewProps> = ({
                   placeholder={t.journal.entryContentPlaceholder}
                   className="w-full p-3.5 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-emerald-500"
                 />
-                <div className={`mt-1 text-right text-[11px] ${currentWordCount > maxWords ? 'text-rose-600 font-bold' : 'text-slate-400'}`}>
-                  {currentWordCount.toLocaleString()} / {maxWords.toLocaleString()} {isBn ? 'শব্দ' : 'words'}
+                <div className={`mt-1 text-right text-[11px] ${totalEntryWordCount > maxWords ? 'text-rose-600 font-bold' : 'text-slate-400'}`}>
+                  {editingEntry
+                    ? (isBn ? 'বর্তমান ও পুরোনো সংস্করণ: ' : 'Current + previous versions: ')
+                    : ''}
+                  {totalEntryWordCount.toLocaleString()} / {maxWords.toLocaleString()} {isBn ? 'শব্দ' : 'words'}
                 </div>
               </div>
 
@@ -635,7 +741,7 @@ export const JournalView: React.FC<JournalViewProps> = ({
                 </button>
                 <button
                   type="submit"
-                  disabled={currentWordCount > maxWords || atEntryLimit && !editingEntry}
+                  disabled={totalEntryWordCount > maxWords || atEntryLimit && !editingEntry}
                   className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold shadow-md shadow-emerald-600/20"
                 >
                   {t.journal.saveEntry}

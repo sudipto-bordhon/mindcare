@@ -260,7 +260,7 @@ async function requestAICompletion({
   // Extract last user message for fallback matching
   const lastUserMsg = [...messages].reverse().find(m => m.role === 'user')?.content || '';
 
-  // 1. Try OpenAI if key is present AND not currently blocked by quota exhaustion
+  // 1.OpenAI 
   if (openAIApiKey && Date.now() > openAIQuotaExhaustedUntil) {
     try {
       const openAiMessages = [

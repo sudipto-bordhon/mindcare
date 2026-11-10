@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { 
-  Smile, 
   Moon, 
   Activity, 
   Zap, 
@@ -20,6 +19,7 @@ import { translations } from '../data/translations';
 interface MindStatusAssessmentViewProps {
   checkIns: CheckIn[];
   onSaveCheckIn: (checkIn: Omit<CheckIn, 'id'>) => void;
+  onRequireAuth: () => void;
   language: Language;
   userId: string;
 }
@@ -27,6 +27,7 @@ interface MindStatusAssessmentViewProps {
 export const MindStatusAssessmentView: React.FC<MindStatusAssessmentViewProps> = ({
   checkIns,
   onSaveCheckIn,
+  onRequireAuth,
   language,
   userId,
 }) => {
@@ -98,6 +99,10 @@ export const MindStatusAssessmentView: React.FC<MindStatusAssessmentViewProps> =
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (isSaving) return;
+    if (userId === 'guest') {
+      onRequireAuth();
+      return;
+    }
     if (todaysCheckIn) {
       const shouldUpdate = window.confirm(
         isBn
@@ -136,10 +141,6 @@ export const MindStatusAssessmentView: React.FC<MindStatusAssessmentViewProps> =
     <div className="max-w-4xl mx-auto space-y-8 pb-16">
       {/* Header */}
       <div className="text-center max-w-xl mx-auto space-y-2">
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 text-xs font-bold">
-          <Smile className="w-3.5 h-3.5" />
-          <span>{isBn ? 'দৈনিক মননশীল চেক-ইন' : 'Daily Mindful Check-in'}</span>
-        </div>
         <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white">
           {t.assessment.title}
         </h1>

@@ -306,7 +306,11 @@ export default function App() {
       setScreenings([]);
     }
 
-    setCurrentTab(user.role === 'admin' || user.role === 'super_admin' ? 'admin' : 'dashboard');
+    const isAdmin = user.role === 'admin' || user.role === 'super_admin';
+    const destination = currentTab === 'home' || (currentTab === 'admin' && !isAdmin)
+      ? (isAdmin ? 'admin' : 'dashboard')
+      : currentTab;
+    setCurrentTab(destination);
   };
 
   const handleLogout = () => {
@@ -319,6 +323,10 @@ export default function App() {
 
   // Check-in save handler - updates streak dynamically based on real dates
   const handleSaveCheckIn = (newChk: Omit<CheckIn, 'id'>) => {
+    if (!currentUser) {
+      setIsAuthModalOpen(true);
+      return;
+    }
     const now = new Date().toISOString();
     const userId = currentUser?.id || 'guest';
     const existing = checkIns.find(checkIn => checkIn.userId === userId && checkIn.date === newChk.date);
@@ -348,6 +356,10 @@ export default function App() {
 
   // Journal handlers
   const handleSaveJournalEntry = (newEntry: Omit<JournalEntry, 'id' | 'createdAt' | 'updatedAt'>) => {
+    if (!currentUser) {
+      setIsAuthModalOpen(true);
+      return;
+    }
     if (journalEntries.length >= 2000) return;
     const created: JournalEntry = {
       ...newEntry,
@@ -360,15 +372,27 @@ export default function App() {
   };
 
   const handleDeleteJournalEntry = (id: string) => {
+    if (!currentUser) {
+      setIsAuthModalOpen(true);
+      return;
+    }
     setJournalEntries(prev => prev.filter(j => j.id !== id));
   };
 
   const handleUpdateJournalEntry = (updated: JournalEntry) => {
+    if (!currentUser) {
+      setIsAuthModalOpen(true);
+      return;
+    }
     setJournalEntries(prev => prev.map(j => j.id === updated.id ? updated : j));
   };
 
   // Screening handler
   const handleSaveScreening = (attempt: ScreeningAttempt) => {
+    if (!currentUser) {
+      setIsAuthModalOpen(true);
+      return;
+    }
     setScreenings(prev => {
       if (!attempt.isManualRefresh || !attempt.cycleAnchorDate) {
         return [attempt, ...prev];
@@ -384,6 +408,10 @@ export default function App() {
 
   // Consent update
   const handleUpdateConsent = (updated: Partial<ConsentSettings>) => {
+    if (!currentUser) {
+      setIsAuthModalOpen(true);
+      return;
+    }
     setConsent(prev => ({
       ...prev,
       ...updated,
@@ -393,13 +421,19 @@ export default function App() {
 
   // User profile update
   const handleUpdateUser = (updatedUser: Partial<User>) => {
-    if (currentUser) {
-      setCurrentUser({ ...currentUser, ...updatedUser });
+    if (!currentUser) {
+      setIsAuthModalOpen(true);
+      return;
     }
+    setCurrentUser({ ...currentUser, ...updatedUser });
   };
 
   // Delete account & full reset
   const handleDeleteAccount = () => {
+    if (!currentUser) {
+      setIsAuthModalOpen(true);
+      return;
+    }
     try {
       localStorage.clear();
     } catch {
@@ -414,6 +448,10 @@ export default function App() {
 
   // Export full archive
   const handleExportAllData = () => {
+    if (!currentUser) {
+      setIsAuthModalOpen(true);
+      return;
+    }
     const fullBackup = {
       user: currentUser,
       consent,
@@ -452,6 +490,22 @@ export default function App() {
 
       {/* Main View Router */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-6 sm:pt-8">
+        {!currentUser && currentTab !== 'home' && currentTab !== 'professionals' && currentTab !== 'admin' && (
+          <div className="mb-5 flex flex-col gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 dark:border-emerald-900/60 dark:bg-emerald-950/30 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-xs font-medium text-emerald-900 dark:text-emerald-200">
+              {isBn
+                ? 'আপনি গেস্ট হিসেবে ব্রাউজ করছেন। ব্যক্তিগত তথ্য সংরক্ষণ করতে লগইন করুন।'
+                : 'You are browsing as a guest. Sign in to save personal data.'}
+            </p>
+            <button
+              type="button"
+              onClick={() => setIsAuthModalOpen(true)}
+              className="shrink-0 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-bold text-white transition hover:bg-emerald-700"
+            >
+              {isBn ? 'লগইন / সাইন আপ' : 'Sign in / Sign up'}
+            </button>
+          </div>
+        )}
         {/* Public Route: Home */}
         {currentTab === 'home' && (
           <LandingView
@@ -465,9 +519,6 @@ export default function App() {
             }}
             onExploreFeature={(tab) => {
               setCurrentTab(tab);
-              if (!currentUser && tab !== 'home' && tab !== 'professionals') {
-                setIsAuthModalOpen(true);
-              }
             }}
             onOpenCrisis={() => setIsCrisisModalOpen(true)}
           />
@@ -481,29 +532,17 @@ export default function App() {
           />
         )}
 
-        {/* Protected Route Gate: Shows friendly lock card if unauthenticated */}
-        {!currentUser && currentTab !== 'home' && currentTab !== 'professionals' && (
+        {/* Only the administrative console requires authentication just to view it. */}
+        {!currentUser && currentTab === 'admin' && (
           <ProtectedFeatureCard
-            featureName={
-              currentTab === 'dashboard' ? (isBn ? 'ড্যাশবোর্ড ও সুস্থতা পরিসংখ্যান' : 'Personal Dashboard & Wellness Summary') :
-              currentTab === 'assessment' ? (isBn ? 'মাইন্ড স্ট্যাটাস অ্যাসেসমেন্ট' : 'Mind Status Daily Assessment') :
-              currentTab === 'screenings' ? (isBn ? 'ক্লিনিক্যাল স্ক্রিনিং টুলস (PHQ-9, GAD-7, GHQ-12)' : 'Clinical Screening Tools') :
-              currentTab === 'ai-assistant' ? (isBn ? 'চ্যাটবট কেয়ার কমপ্যানিয়ন (সুহৃদ)' : 'Chatbot Care Companion (Suhrid)') :
-              currentTab === 'stress-analysis' ? (isBn ? 'স্ট্রেস ও ভয়েস অ্যানালাইসিস' : 'Stress & Wellness Analysis') :
-              currentTab === 'journal' ? (isBn ? 'সুরক্ষিত জার্নাল ও ডায়েরি' : 'Encrypted Reflection Journal') :
-              currentTab === 'activities' ? (isBn ? 'মাইন্ডকেয়ার অ্যাক্টিভিটিজ ও রিলাক্সেশন' : 'MindCare Relaxation Activities') :
-              currentTab === 'education' ? (isBn ? 'মানসিক স্বাস্থ্য জ্ঞানভাণ্ডার ও রিসোর্স' : 'Psychoeducation & Mental Health Guides') :
-              currentTab === 'reports' ? (isBn ? 'উন্নতি ও অগ্রগতির পূর্ণাঙ্গ রিপোর্ট' : 'Progress Report & Clinical Analytics') :
-              currentTab === 'settings' ? (isBn ? 'ব্যক্তিগত প্রোফাইল ও নিরাপত্তা সেটিংস' : 'Profile & Privacy Settings') :
-              (isBn ? 'অ্যাডমিন ড্যাশবোর্ড' : 'Administrative Console')
-            }
+            featureName={isBn ? 'অ্যাডমিন ড্যাশবোর্ড' : 'Administrative Console'}
             onOpenAuth={() => setIsAuthModalOpen(true)}
             language={language}
           />
         )}
 
-        {/* Protected Authenticated Views */}
-        {currentUser && currentTab === 'dashboard' && (
+        {/* Wellness views are readable without an account; submit actions require sign-in. */}
+        {currentTab === 'dashboard' && (
           <DashboardView
             currentUser={currentUser}
             checkIns={checkIns}
@@ -517,16 +556,17 @@ export default function App() {
           />
         )}
 
-        {currentUser && currentTab === 'assessment' && (
+        {currentTab === 'assessment' && (
           <MindStatusAssessmentView
             checkIns={checkIns}
             onSaveCheckIn={handleSaveCheckIn}
             language={language}
-            userId={currentUser.id}
+            userId={currentUser?.id || 'guest'}
+            onRequireAuth={() => setIsAuthModalOpen(true)}
           />
         )}
 
-        {currentUser && currentTab === 'screenings' && (
+        {currentTab === 'screenings' && (
           <ScreeningToolsView
             screenings={screenings}
             currentUser={currentUser}
@@ -534,20 +574,22 @@ export default function App() {
             onOpenCrisis={() => setIsCrisisModalOpen(true)}
             refreshToken={screeningRefreshToken}
             language={language}
+            onRequireAuth={() => setIsAuthModalOpen(true)}
           />
         )}
 
-        {currentUser && currentTab === 'ai-assistant' && (
+        {currentTab === 'ai-assistant' && (
           <AIAssistantView
             currentUser={currentUser}
             consent={consent}
             onUpdateConsent={handleUpdateConsent}
             language={language}
             onOpenCrisis={() => setIsCrisisModalOpen(true)}
+            onRequireAuth={() => setIsAuthModalOpen(true)}
           />
         )}
 
-        {currentUser && currentTab === 'stress-analysis' && (
+        {currentTab === 'stress-analysis' && (
           <StressAnalysisView
             checkIns={checkIns}
             screenings={screenings}
@@ -559,7 +601,7 @@ export default function App() {
           />
         )}
 
-        {currentUser && currentTab === 'journal' && (
+        {currentTab === 'journal' && (
           <JournalView
             entries={journalEntries}
             consent={consent}
@@ -568,22 +610,23 @@ export default function App() {
             onDeleteEntry={handleDeleteJournalEntry}
             onUpdateEntry={handleUpdateJournalEntry}
             language={language}
+            onRequireAuth={() => setIsAuthModalOpen(true)}
           />
         )}
 
-        {currentUser && currentTab === 'activities' && (
+        {currentTab === 'activities' && (
           <MindCareActivitiesView
             language={language}
           />
         )}
 
-        {currentUser && currentTab === 'education' && (
+        {currentTab === 'education' && (
           <EducationView
             language={language}
           />
         )}
 
-        {currentUser && currentTab === 'reports' && (
+        {currentTab === 'reports' && (
           <WellnessProgressReportView
             checkIns={checkIns}
             screenings={screenings}
@@ -591,7 +634,7 @@ export default function App() {
           />
         )}
 
-        {currentUser && currentTab === 'settings' && (
+        {currentTab === 'settings' && (
           <SettingsView
             currentUser={currentUser}
             consent={consent}
@@ -600,6 +643,7 @@ export default function App() {
             onDeleteAccount={handleDeleteAccount}
             onExportAllData={handleExportAllData}
             language={language}
+            onRequireAuth={() => setIsAuthModalOpen(true)}
           />
         )}
 

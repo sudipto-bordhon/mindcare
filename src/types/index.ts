@@ -101,8 +101,19 @@ export interface JournalEntry {
   moodTag: string;
   category: string;
   aiReflection?: string;
+  revisions?: JournalEntryRevision[];
   createdAt: string;
   updatedAt: string;
+}
+
+export interface JournalEntryRevision {
+  title: string;
+  content: string;
+  date: string;
+  moodTag: string;
+  category: string;
+  aiReflection?: string;
+  savedAt: string;
 }
 
 export interface ChatMessage {
@@ -125,6 +136,15 @@ export interface WellnessActivity {
   instructionsEn: string[];
   instructionsBn: string[];
   audioSupported?: boolean;
+}
+
+export interface AmbientSoundscape {
+  id: string;
+  titleEn: string;
+  titleBn: string;
+  source: 'synth' | 'audio';
+  soundType?: 'rain' | 'ocean' | 'forest' | 'birds' | 'whitenoise';
+  audioUrl?: string;
 }
 
 export interface MentalWellnessKnowledge {

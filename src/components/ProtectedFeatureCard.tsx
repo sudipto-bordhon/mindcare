@@ -31,17 +31,17 @@ export const ProtectedFeatureCard: React.FC<ProtectedFeatureCardProps> = ({
         </h2>
         <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 max-w-md mx-auto leading-relaxed">
           {isBn
-            ? 'আপনার মানসিক সুস্থতা ও ব্যক্তিগত তথ্য নিরাপদ ও এনক্রিপ্ট রাখতে এই ফিচারটি শুধুমাত্র লগইন করা সদস্যদের জন্য উন্মুক্ত।'
-            : 'To ensure your personal reflections and wellness tracking remain confidential and encrypted, sign in is required to access this feature.'}
+            ? 'অ্যাডমিন কন্ট্রোল সেন্টার ব্যবহারের জন্য লগইন প্রয়োজন। ওয়েলনেস পেজগুলো লগইন ছাড়াই দেখা যাবে; ব্যক্তিগত তথ্য সংরক্ষণ করতে অ্যাকাউন্টে প্রবেশ করুন।'
+            : 'Sign in is required for the admin control center. Wellness pages are available to browse without an account; sign in to save personal data.'}
         </p>
       </div>
 
       <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 text-xs text-slate-500 max-w-sm mx-auto">
         <p className="font-semibold text-slate-800 dark:text-slate-200">
-          {isBn ? 'লগইন ছাড়া যেসব দেখা যাবে:' : 'Publicly accessible without login:'}
+          {isBn ? 'লগইন ছাড়া যেসব দেখা যাবে:' : 'Available without login:'}
         </p>
         <p className="mt-1">
-          {isBn ? 'হোম পেজ • জরুরি হটলাইন ও ডাক্তার ডিরেক্টরি' : 'Home Overview • Emergency Helplines & Doctors'}
+          {isBn ? 'সব ওয়েলনেস পেজ • জরুরি হটলাইন ও ডাক্তার ডিরেক্টরি' : 'All wellness pages • Emergency Helplines & Doctors'}
         </p>
       </div>
 

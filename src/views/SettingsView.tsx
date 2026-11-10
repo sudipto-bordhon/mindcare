@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   Settings as SettingsIcon, 
   ShieldCheck, 
@@ -22,6 +22,7 @@ interface SettingsViewProps {
   onDeleteAccount: () => void;
   onExportAllData: () => void;
   language: Language;
+  onRequireAuth: () => void;
 }
 
 export const SettingsView: React.FC<SettingsViewProps> = ({
@@ -32,6 +33,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   onDeleteAccount,
   onExportAllData,
   language,
+  onRequireAuth,
 }) => {
   const t = translations[language];
   const isBn = language === 'bn';
@@ -42,8 +44,18 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [showDeletePrompt, setShowDeletePrompt] = useState(false);
 
+  useEffect(() => {
+    setName(currentUser?.name || '');
+    setEmail(currentUser?.email || '');
+    setAgeBand(currentUser?.ageBand || 'adult');
+  }, [currentUser?.id, currentUser?.name, currentUser?.email, currentUser?.ageBand]);
+
   const handleSaveProfile = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!currentUser) {
+      onRequireAuth();
+      return;
+    }
     onUpdateUser({
       name,
       email,
@@ -94,6 +106,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
+              disabled={!currentUser}
               className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-emerald-500"
             />
           </div>
@@ -106,6 +119,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              disabled={!currentUser}
               className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-emerald-500"
             />
           </div>
@@ -117,6 +131,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             <select
               value={ageBand}
               onChange={(e) => setAgeBand(e.target.value as AgeBand)}
+              disabled={!currentUser}
               className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-emerald-500"
             >
               <option value="child_teen">{isBn ? 'শিশু / কিশোর (১৮ বছরের নিচে - বিশেষ সুরক্ষা)' : 'Child / Teen (<18 - Guardian Safeguards)'}</option>
@@ -162,7 +177,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               <input
                 type="checkbox"
                 checked={consent.aiMemoryConsent}
-                onChange={(e) => onUpdateConsent({ aiMemoryConsent: e.target.checked })}
+                onChange={(e) => {
+                  if (!currentUser) {
+                    onRequireAuth();
+                    return;
+                  }
+                  onUpdateConsent({ aiMemoryConsent: e.target.checked });
+                }}
                 className="sr-only peer"
               />
               <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600" />
@@ -183,7 +204,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               <input
                 type="checkbox"
                 checked={consent.journalAnalysisConsent}
-                onChange={(e) => onUpdateConsent({ journalAnalysisConsent: e.target.checked })}
+                onChange={(e) => {
+                  if (!currentUser) {
+                    onRequireAuth();
+                    return;
+                  }
+                  onUpdateConsent({ journalAnalysisConsent: e.target.checked });
+                }}
                 className="sr-only peer"
               />
               <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600" />
@@ -203,7 +230,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
         <div className="flex flex-col sm:flex-row gap-4">
           <button
-            onClick={onExportAllData}
+            onClick={() => currentUser ? onExportAllData() : onRequireAuth()}
             className="flex-1 py-3 px-4 rounded-2xl border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700 text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center justify-center gap-2 transition"
           >
             <Download className="w-4 h-4 text-emerald-600" />
@@ -212,7 +239,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
           {!showDeletePrompt ? (
             <button
-              onClick={() => setShowDeletePrompt(true)}
+              onClick={() => currentUser ? setShowDeletePrompt(true) : onRequireAuth()}
               className="py-3 px-4 rounded-2xl border border-rose-200 dark:border-rose-900/60 bg-rose-50/50 dark:bg-rose-950/30 hover:bg-rose-100 text-xs font-bold text-rose-700 dark:text-rose-300 flex items-center justify-center gap-2 transition"
             >
               <Trash2 className="w-4 h-4 text-rose-600" />

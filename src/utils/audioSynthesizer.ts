@@ -4,6 +4,7 @@
 let audioCtx: AudioContext | null = null;
 let currentNoiseNode: AudioNode | null = null;
 let currentGainNode: GainNode | null = null;
+let currentAudioPlayer: HTMLAudioElement | null = null;
 
 function getAudioContext(): AudioContext {
   if (!audioCtx) {
@@ -107,7 +108,26 @@ export function startAmbientSound(type: 'rain' | 'ocean' | 'forest' | 'birds' | 
   }
 }
 
+export async function startAmbientAudio(url: string, volume = 0.25): Promise<void> {
+  stopAmbientSound();
+  const player = new Audio(url);
+  player.loop = true;
+  player.volume = Math.max(0, Math.min(1, volume));
+  currentAudioPlayer = player;
+  try {
+    await player.play();
+  } catch (error) {
+    if (currentAudioPlayer === player) currentAudioPlayer = null;
+    player.pause();
+    throw error;
+  }
+}
+
 export function stopAmbientSound() {
+  if (currentAudioPlayer) {
+    currentAudioPlayer.pause();
+    currentAudioPlayer = null;
+  }
   if (currentNoiseNode) {
     try {
       (currentNoiseNode as AudioBufferSourceNode).stop();

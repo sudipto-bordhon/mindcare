@@ -31,8 +31,8 @@ import {
   Building2,
   X
 } from 'lucide-react';
-import { User, AuditEvent, JournalEntry, Language, MentalWellnessKnowledge, WellnessActivity, CheckIn, ScreeningAttempt, ChatMessage, ScreeningInstrument } from '../types';
-import { DEMO_USERS, INITIAL_AUDIT_LOGS, SCREENING_INSTRUMENTS, WELLNESS_ACTIVITIES } from '../data/initialData';
+import { User, AuditEvent, JournalEntry, Language, MentalWellnessKnowledge, WellnessActivity, AmbientSoundscape, CheckIn, ScreeningAttempt, ChatMessage, ScreeningInstrument } from '../types';
+import { DEMO_USERS, INITIAL_AUDIT_LOGS, INITIAL_AMBIENT_SOUNDSCAPES, SCREENING_INSTRUMENTS, WELLNESS_ACTIVITIES } from '../data/initialData';
 import { translations } from '../data/translations';
 
 interface AdminPanelViewProps {
@@ -69,6 +69,18 @@ export const AdminPanelView: React.FC<AdminPanelViewProps> = ({
   const [activityForm, setActivityForm] = useState({
     titleEn: '', titleBn: '', descriptionEn: '', descriptionBn: '', durationMinutes: '5', category: 'mindfulness',
   });
+  const [ambientSoundscapes, setAmbientSoundscapes] = useState<AmbientSoundscape[]>(() => {
+    try {
+      const saved = localStorage.getItem('mindcare_ambient_soundscapes');
+      if (saved === null) return INITIAL_AMBIENT_SOUNDSCAPES;
+      const parsed = JSON.parse(saved);
+      return Array.isArray(parsed) ? parsed : INITIAL_AMBIENT_SOUNDSCAPES;
+    } catch {
+      return INITIAL_AMBIENT_SOUNDSCAPES;
+    }
+  });
+  const [soundscapeForm, setSoundscapeForm] = useState({ titleEn: '', titleBn: '', audioUrl: '' });
+  const [soundscapeFormError, setSoundscapeFormError] = useState<string | null>(null);
   const [knowledgeCards, setKnowledgeCards] = useState<MentalWellnessKnowledge[]>(() => {
     try {
       const saved = localStorage.getItem('mindcare_wellness_knowledge');
@@ -354,6 +366,61 @@ Clinical boundaries:
     window.dispatchEvent(new Event('mindcare-library-updated'));
   };
 
+  const handleAddSoundscape = (event: React.FormEvent) => {
+    event.preventDefault();
+    setSoundscapeFormError(null);
+    const titleEn = soundscapeForm.titleEn.trim();
+    const titleBn = soundscapeForm.titleBn.trim();
+    const audioUrl = soundscapeForm.audioUrl.trim();
+    let parsedUrl: URL;
+    try {
+      parsedUrl = new URL(audioUrl);
+    } catch {
+      setSoundscapeFormError(isBn ? 'একটি সঠিক audio URL দিন।' : 'Enter a valid audio URL.');
+      return;
+    }
+
+    if ((!titleEn && !titleBn) || !['http:', 'https:'].includes(parsedUrl.protocol)) {
+      setSoundscapeFormError(isBn
+        ? 'কমপক্ষে একটি নাম এবং একটি HTTP/HTTPS অডিও লিংক দিন।'
+        : 'Enter at least one title and an HTTP/HTTPS audio URL.');
+      return;
+    }
+
+    const soundscape: AmbientSoundscape = {
+      id: `ambient_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      titleEn: titleEn || titleBn,
+      titleBn: titleBn || titleEn,
+      source: 'audio',
+      audioUrl,
+    };
+    const updated = [soundscape, ...ambientSoundscapes];
+    try {
+      localStorage.setItem('mindcare_ambient_soundscapes', JSON.stringify(updated));
+      setAmbientSoundscapes(updated);
+      setSoundscapeForm({ titleEn: '', titleBn: '', audioUrl: '' });
+      window.dispatchEvent(new Event('mindcare-library-updated'));
+    } catch {
+      setSoundscapeFormError(isBn
+        ? 'সাউন্ডস্কেপ সংরক্ষণ করা যায়নি। আবার চেষ্টা করুন।'
+        : 'The soundscape could not be saved. Please try again.');
+    }
+  };
+
+  const handleDeleteSoundscape = (id: string) => {
+    const updated = ambientSoundscapes.filter(soundscape => soundscape.id !== id);
+    try {
+      localStorage.setItem('mindcare_ambient_soundscapes', JSON.stringify(updated));
+      setAmbientSoundscapes(updated);
+      setSoundscapeFormError(null);
+      window.dispatchEvent(new Event('mindcare-library-updated'));
+    } catch {
+      setSoundscapeFormError(isBn
+        ? 'সাউন্ডস্কেপ মুছে ফেলা যায়নি। আবার চেষ্টা করুন।'
+        : 'The soundscape could not be removed. Please try again.');
+    }
+  };
+
   const updateInstrumentQuestion = (
     instrumentId: ScreeningInstrument['id'],
     questionId: number,
@@ -457,10 +524,6 @@ Clinical boundaries:
       {/* Admin Title */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 text-xs font-bold mb-2">
-            <Shield className="w-3.5 h-3.5" />
-            <span>{isBn ? 'প্রশাসনিক ও ক্লিনিক্যাল সুশাসন' : 'Clinical & Administrative Governance'}</span>
-          </div>
           <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white">
             {t.admin.title}
           </h1>
@@ -781,6 +844,7 @@ Clinical boundaries:
               </div>
             )}
           </div>
+
         </div>
       )}
 
@@ -1091,6 +1155,54 @@ Clinical boundaries:
               </div>
             )}
           </div>
+          <section className="overflow-hidden rounded-[2rem] border border-indigo-100 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800">
+            <div className="border-b border-slate-100 px-5 py-5 dark:border-slate-700">
+              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-indigo-600 dark:text-indigo-400">{isBn ? 'সাউন্ড লাইব্রেরি' : 'Sound library'}</p>
+              <h3 className="mt-1 text-lg font-extrabold text-slate-900 dark:text-white">{isBn ? 'Restful Ambient Soundscapes পরিচালনা' : 'Manage Restful Ambient Soundscapes'}</h3>
+              <p className="mt-1 text-[11px] text-slate-500">{isBn ? 'এখান থেকে sound যোগ বা মুছলে Activities পেজে তা সঙ্গে সঙ্গে দেখা যাবে। নতুন sound-এর জন্য সরাসরি audio URL দিন।' : 'Add or remove sounds shown on the Activities page. New sounds need a direct audio URL.'}</p>
+            </div>
+            <form onSubmit={handleAddSoundscape} className="space-y-4 border-b border-slate-100 p-5 dark:border-slate-700">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <label className="space-y-1.5">
+                  <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300">{isBn ? 'ইংরেজি নাম' : 'English name'}</span>
+                  <input value={soundscapeForm.titleEn} onChange={event => setSoundscapeForm(previous => ({ ...previous, titleEn: event.target.value }))} placeholder="Rainforest ambience" className="admin-input bg-white dark:bg-slate-800" />
+                </label>
+                <label className="space-y-1.5">
+                  <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300">{isBn ? 'বাংলা নাম' : 'Bangla name'}</span>
+                  <input value={soundscapeForm.titleBn} onChange={event => setSoundscapeForm(previous => ({ ...previous, titleBn: event.target.value }))} placeholder="বৃষ্টিবনের শব্দ" className="admin-input bg-white dark:bg-slate-800" />
+                </label>
+              </div>
+              <label className="block space-y-1.5">
+                <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300">{isBn ? 'সরাসরি audio URL' : 'Direct audio URL'}</span>
+                <input type="url" value={soundscapeForm.audioUrl} onChange={event => setSoundscapeForm(previous => ({ ...previous, audioUrl: event.target.value }))} placeholder="https://example.com/ambient-audio.mp3" className="admin-input bg-white dark:bg-slate-800" />
+                <span className="block text-[10px] text-slate-400">{isBn ? 'HTTP বা HTTPS audio file link ব্যবহার করুন।' : 'Use a direct HTTP or HTTPS audio file link.'}</span>
+              </label>
+              {soundscapeFormError && <p role="alert" className="text-xs font-semibold text-rose-600">{soundscapeFormError}</p>}
+              <button type="submit" className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-indigo-700">
+                <Plus className="h-4 w-4" />
+                {isBn ? 'সাউন্ড যোগ করুন' : 'Add sound'}
+              </button>
+            </form>
+            <div className="space-y-2 p-5">
+              {ambientSoundscapes.length === 0 ? (
+                <p className="rounded-2xl border border-dashed border-slate-200 py-8 text-center text-xs text-slate-500 dark:border-slate-700">{isBn ? 'কোনো soundscape নেই। নতুন audio যোগ করুন।' : 'No soundscapes yet. Add an audio sound above.'}</p>
+              ) : ambientSoundscapes.map(soundscape => (
+                <article key={soundscape.id} className="flex items-start justify-between gap-3 rounded-2xl border border-slate-200 p-4 dark:border-slate-700">
+                  <div className="min-w-0">
+                    <h4 className="text-sm font-bold text-slate-900 dark:text-white">{isBn ? soundscape.titleBn : soundscape.titleEn}</h4>
+                    <p className="mt-1 break-all text-[10px] text-slate-500">
+                      {soundscape.source === 'synth'
+                        ? (isBn ? 'বিল্ট-ইন synthesized sound' : 'Built-in synthesized sound')
+                        : soundscape.audioUrl}
+                    </p>
+                  </div>
+                  <button type="button" onClick={() => handleDeleteSoundscape(soundscape.id)} className="shrink-0 rounded-lg p-2 text-rose-600 transition hover:bg-rose-50 dark:hover:bg-rose-950/40" aria-label={isBn ? `${soundscape.titleBn} মুছুন` : `Remove ${soundscape.titleEn}`}>
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </article>
+              ))}
+            </div>
+          </section>
         </div>
       )}
 

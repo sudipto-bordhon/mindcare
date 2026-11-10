@@ -8,7 +8,8 @@ import {
   WellnessActivity, 
   ProfessionalContact, 
   AuditEvent,
-  Article 
+  Article,
+  AmbientSoundscape
 } from '../types';
 
 export const DEMO_USERS: User[] = [
@@ -236,6 +237,14 @@ export const INITIAL_CHECKINS: CheckIn[] = [];
 export const INITIAL_JOURNAL_ENTRIES: JournalEntry[] = [];
 
 export const INITIAL_SCREENINGS: ScreeningAttempt[] = [];
+
+export const INITIAL_AMBIENT_SOUNDSCAPES: AmbientSoundscape[] = [
+  { id: 'rain', titleEn: 'Gentle Rain', titleBn: 'বৃষ্টির শব্দ', source: 'synth', soundType: 'rain' },
+  { id: 'ocean', titleEn: 'Ocean Waves', titleBn: 'সাগরের ঢেউ', source: 'synth', soundType: 'ocean' },
+  { id: 'forest', titleEn: 'Forest Breeze', titleBn: 'বনের হাওয়া', source: 'synth', soundType: 'forest' },
+  { id: 'birds', titleEn: 'Morning Birds', titleBn: 'পাখির ডাক', source: 'synth', soundType: 'birds' },
+  { id: 'whitenoise', titleEn: 'White Noise', titleBn: 'হোয়াইট নয়েজ', source: 'synth', soundType: 'whitenoise' },
+];
 
 export const WELLNESS_ACTIVITIES: WellnessActivity[] = [
   {

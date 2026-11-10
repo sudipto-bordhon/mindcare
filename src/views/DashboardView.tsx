@@ -22,7 +22,7 @@ import { User, CheckIn, Language, ScreeningAttempt } from '../types';
 import { translations } from '../data/translations';
 
 interface DashboardViewProps {
-  currentUser: User;
+  currentUser: User | null;
   checkIns: CheckIn[];
   screenings: ScreeningAttempt[];
   onNavigate: (tab: string) => void;
